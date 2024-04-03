@@ -1,95 +1,133 @@
-#!/bin/bash
-# Compile script for Arisuu kernel
-# Copyright (c) RapliVx Aka Rafi Aditya
+#!/usr/bin/env bash
 
-# Setup
-export KBUILD_BUILD_USER=Rapli # User Kernel Flag
-export KBUILD_BUILD_HOST=Poco Nya Dead # Host Kernel Flag
-DEVICE="Beryllium" # Your Device
-WORK_DIR=$(pwd) # Your Dir
-CLANG="WeebX" # Your =Name Clang Or Toolchain
-SECONDS=0 # Bash Timer
-ZIPNAME="Arisuu-Kernel-[Serika]-$(date '+%Y%m%d-%H%M').zip" # Zip Name Your Kernel
-TC_DIR="$WORK_DIR/Android/$CLANG" # Toolchain Or Clang Dir
-AK3_DIR="$WORK_DIR/Android/AK3" # Anykernel Dir
-DEFCONFIG="beryllium_defconfig" # Your Defconfig
+# Dependencies
+git clone $REPO -b $BRANCH kernel 
+cd kernel
 
-# Header
-cyan="\033[96m"
-green="\033[92m"
-red="\033[91m"
-blue="\033[94m"
-yellow="\033[93m"
-
-echo -e "$cyan===========================\033[0m"
-echo -e "$cyan= START COMPILING KERNEL  =\033[0m"
-echo -e "$cyan===========================\033[0m"
-
-echo -e "$blue...KSABAR...\033[0m"
-
-echo -e -ne "$green== (10%)\r"
-sleep 0.7
-echo -e -ne "$green=====                     (33%)\r"
-sleep 0.7
-echo -e -ne "$green=============             (66%)\r"
-sleep 0.7
-echo -e -ne "$green=======================   (100%)\r"
-echo -ne "\n"
-
-echo -e -n "$yellow\033[104mPRESS ENTER TO CONTINUE\033[0m"
-read P
-echo  $P
-
-# Build Script
-
-function clean() {
-    echo -e "\n"
-    echo -e "$red << cleaning up >> \\033[0m"
-    echo -e "\n"
-    rm -rf out
-    make mrproper
+clang() {
+    echo "Cloning clang"
+    if [ ! -d "clang" ]; then
+        git clone https://gitlab.com/LeCmnGend/proton-clang -b clang-15 --depth=1 clang
+        KBUILD_COMPILER_STRING="Proton clang 15.0 x sirnewbies"
+        PATH="${PWD}/clang/bin:${PATH}"
+    fi
+    sudo apt install -y ccache
+    echo "Done"
 }
 
-function build_kernel() {
-make O=out ARCH=arm64 $DEFCONFIG
-make -j$(nproc --all) O=out ARCH=arm64 CC=clang LD=ld.lld AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- 2>&1 | tee log.txt
-
-kernel="out/arch/arm64/boot/Image.gz"
-dtb="out/arch/arm64/boot/dtb.img"
-dtbo="out/arch/arm64/boot/dtbo.img"
-
-if [ -f "$kernel" ] && [ -f "$dtb" ] && [ -f "$dtbo" ]; then
-	echo -e "\nKernel compiled succesfully! Zipping up...\n"
-	if [ -d "$AK3_DIR" ]; then
-		cp -r $AK3_DIR AnyKernel3
-	elif ! git clone -q https://github.com/RapliVx/AnyKernel3.git -b master; then
-		echo -e "\nAnyKernel3 repo not found locally and couldn't clone from GitHub! Aborting..."
-		exit 1
-	fi
-	cp $kernel $dtb $dtbo AnyKernel3
-	rm -rf out/arch/arm64/boot
-	cd AnyKernel3
-	git checkout Arisuu &> /dev/null
-	zip -r9 "../$ZIPNAME" * -x .git README.md *placeholder
-	cd ..
-	rm -rf AnyKernel3
+IMAGE=$(pwd)/out/arch/arm64/boot/Image.gz-dtb
+DATE=$(date +"%Y%m%d-%H%M")
+START=$(date +"%s")
+KERNEL_DIR=$(pwd)
+CACHE=1
+export CACHE
+export KBUILD_COMPILER_STRING
+ARCH=arm64
+export ARCH
+KBUILD_BUILD_HOST="Rapli"
+export KBUILD_BUILD_HOST
+KBUILD_BUILD_USER="noob-server"
+export KBUILD_BUILD_USER
+DEVICE="Xiaomi POCO F1"
+export DEVICE
+CODENAME="beryllium"
+export CODENAME
+DEFCONFIG="lethal_defconfig"
+export DEFCONFIG
+COMMIT_HASH=$(git rev-parse --short HEAD)
+export COMMIT_HASH
+PROCS=$(nproc --all)
+export PROCS
+STATUS=STABLE
+export STATUS
+source "${HOME}"/.bashrc && source "${HOME}"/.profile
+if [ $CACHE = 1 ]; then
+    ccache -M 100G
+    export USE_CCACHE=1
 fi
+LC_ALL=C
+export LC_ALL
 
-if [ -f $ZIPNAME ] ; then
-    echo -e "$green===========================\033[0m"
-    echo -e "$green=  SUCCESS COMPILE KERNEL \033[0m"
-    echo -e "$green=  Device    : $DEVICE \033[0m"
-    echo -e "$green=  Defconfig : $DEFCONFIG \033[0m"
-    echo -e "$green=  Toolchain : $CLANG \033[0m"
-    echo -e "$green=  Out       : $ZIPNAME \033[0m "
-    echo -e "$green=  Completed in $((SECONDS / 60)) minute(s) and $((SECONDS % 60)) second(s) \033[0m "
-    echo -e "$green=  Have A Brick Day Nihahahah \033[0m"
-    echo -e "$green===========================\033[0m"
-else
-echo -e "$red! FIX YOUR KERNEL SOURCE BRUH !?\033[0m"
-fi
+tg() {
+    curl -sX POST https://api.telegram.org/bot"${token}"/sendMessage -d chat_id="${chat_id}" -d parse_mode=Markdown -d disable_web_page_preview=true -d text="$1" &>/dev/null
 }
 
-# execute
-clean
-build_kernel
+tgs() {
+    MD5=$(md5sum "$1" | cut -d' ' -f1)
+    curl -fsSL -X POST -F document=@"$1" https://api.telegram.org/bot"${token}"/sendDocument \
+        -F "chat_id=${chat_id}" \
+        -F "parse_mode=Markdown" \
+        -F "caption=$2 | *MD5*: \`$MD5\`"
+}
+
+# Send Build Info
+sendinfo() {
+    tg "
+• sirCompiler Action •
+*Building on*: \`Github actions\`
+*Date*: \`${DATE}\`
+*Device*: \`${DEVICE} (${CODENAME})\`
+*Branch*: \`$(git rev-parse --abbrev-ref HEAD)\`
+*Last Commit*: [${COMMIT_HASH}](${REPO}/commit/${COMMIT_HASH})
+*Compiler*: \`${KBUILD_COMPILER_STRING}\`
+*Build Status*: \`${STATUS}\`"
+}
+
+# Push kernel to channel
+push() {
+    cd AnyKernel || exit 1
+    ZIP=$(echo *.zip)
+    tgs "${ZIP}" "Build took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s). | For *${DEVICE} (${CODENAME})* | ${KBUILD_COMPILER_STRING}"
+}
+
+# Catch Error
+finderr() {
+    curl -s -X POST "https://api.telegram.org/bot$token/sendMessage" \
+        -d chat_id="$chat_id" \
+        -d "disable_web_page_preview=true" \
+        -d "parse_mode=markdown" \
+        -d sticker="CAACAgIAAxkBAAED3JViAplqY4fom_JEexpe31DcwVZ4ogAC1BAAAiHvsEs7bOVKQsl_OiME" \
+        -d text="Build throw an error(s)"
+    error_sticker
+    exit 1
+}
+
+# Compile
+compile() {
+
+    if [ -d "out" ]; then
+        rm -rf out && mkdir -p out
+    fi
+
+    ./update_ksu.sh
+
+    make O=out ARCH="${ARCH}" "${DEFCONFIG}"
+    make -j"${PROCS}" O=out \
+        ARCH=$ARCH \
+        CC="clang" \
+        LLVM=1 \
+        CROSS_COMPILE=aarch64-linux-gnu- \
+        CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+
+    if ! [ -a "$IMAGE" ]; then
+        finderr
+        exit 1
+    fi
+
+    git clone --depth=1 https://github.com/RapliVx/AnyKernel3.git AnyKernel -b Beryllium
+    cp out/arch/arm64/boot/Image.gz-dtb AnyKernel
+}
+# Zipping
+zipping() {
+    cd AnyKernel || exit 1
+    zip -r9 Test-Kernel-"${BRANCH}"-"${CODENAME}"-"${DATE}".zip ./*
+    cd ..
+}
+
+clang
+sendinfo
+compile
+zipping
+END=$(date +"%s")
+DIFF=$((END - START))
+push
