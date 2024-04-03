@@ -61,7 +61,7 @@ jobs:
             wget https://raw.githubusercontent.com/sirnewbies/kernel_build_action/main/scripts/sweet_build_script.sh
             bash sweet_build_script.sh
           elif [ "${DEVICE}" = "beryllium" ]; then
-            wget https://raw.githubusercontent.com/sirnewbies/kernel_build_action/main/scripts/sweet_build_script.sh
+            wget https://raw.githubusercontent.com/RapliVx/kernel_build_action/main/scripts/beryllium_build_script.sh
             bash beryllium_build_script.sh
           else
             echo "Device not supported yet"
